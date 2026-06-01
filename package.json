@@ -1,0 +1,46 @@
+{
+  "name": "fastest-csv",
+  "version": "0.1.0",
+  "description": "Fastest CSV parser — zero dependencies, 100+ lines, <1KB gzip",
+  "type": "module",
+  "main": "src/fastest-csv.js",
+  "exports": {
+    ".": "./src/fastest-csv.js"
+  },
+  "files": [
+    "src/fastest-csv.js",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test src/fastest-csv.test.js"
+  },
+  "keywords": [
+    "csv",
+    "parser",
+    "csv-parser",
+    "csv-to-json",
+    "fast-csv",
+    "papaparse",
+    "papa-parse",
+    "csv-parse",
+    "zero-dependency",
+    "lightweight",
+    "stream",
+    "browser",
+    "deno",
+    "bun"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wushufen/fastest-csv.git"
+  },
+  "homepage": "https://github.com/wushufen/fastest-csv#readme",
+  "bugs": {
+    "url": "https://github.com/wushufen/fastest-csv/issues"
+  },
+  "author": "wushufen <shufen.wu@qq.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
