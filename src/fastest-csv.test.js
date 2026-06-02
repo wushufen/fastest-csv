@@ -199,11 +199,12 @@ describe('parseCSV - onHeader 回调', () => {
   })
 
   it('onHeader 接收 col 参数', () => {
+    /** @type {number[]} */
     const cols = []
     parseCSV('a,b,c\n1,2,3', {
-      onHeader: (name, _value, col) => {
+      onHeader: (value, _name, col) => {
         cols.push(col)
-        return name
+        return value
       },
     })
     assert.deepStrictEqual(cols, [0, 1, 2])
@@ -213,7 +214,7 @@ describe('parseCSV - onHeader 回调', () => {
 describe('parseCSV - onValue 回调', () => {
   it('将数字字符串转为数字', () => {
     const result = parseCSV('name,age\nAlice,30\nBob,25', {
-      onValue: (_name, value) => {
+      onValue: (value) => {
         const num = Number(value)
         return Number.isNaN(num) ? value : num
       },
@@ -228,9 +229,10 @@ describe('parseCSV - onValue 回调', () => {
   })
 
   it('onValue 接收 name 和 col 参数', () => {
+    /** @type {{ name: string; value: string; col: number }[]} */
     const calls = []
     parseCSV('a,b\n1,2', {
-      onValue: (name, value, col) => {
+      onValue: (value, name, col) => {
         calls.push({ name, value, col })
         return value
       },
@@ -243,7 +245,7 @@ describe('parseCSV - onValue 回调', () => {
 
   it('onValue 可返回任意类型', () => {
     const result = parseCSV('x,y\n1,2', {
-      onValue: (_name, value) => ({ raw: value }),
+      onValue: (value) => ({ raw: value }),
     })
     assert.deepStrictEqual(result, {
       headers: ['x', 'y'],
@@ -265,7 +267,7 @@ describe('parseCSV - 边界情况', () => {
     const result = parseCSV('a,b\n1,2,3,4')
     assert.deepStrictEqual(result, {
       headers: ['a', 'b'],
-      rows: [{ a: '1', b: '2', '2': '3', '3': '4' }],
+      rows: [{ a: '1', b: '2', 2: '3', 3: '4' }],
     })
   })
 
@@ -348,7 +350,7 @@ describe('parseCSV - 尾部分隔符', () => {
     assert.deepStrictEqual(result, {
       headers: ['a', 'b'],
       rows: [
-        { a: '1', b: '', '2': '' },
+        { a: '1', b: '', 2: '' },
         { a: '2', b: '3' },
       ],
     })
@@ -421,7 +423,7 @@ describe('parseCSV - 回调组合', () => {
   it('onHeader + onValue 同时使用', () => {
     const result = parseCSV('name,age\nAlice,30', {
       onHeader: (name) => name.toUpperCase(),
-      onValue: (name, value) => (name === 'AGE' ? Number(value) : value),
+      onValue: (value, name) => (name === 'AGE' ? Number(value) : value),
     })
     assert.deepStrictEqual(result, {
       headers: ['NAME', 'AGE'],
@@ -432,7 +434,7 @@ describe('parseCSV - 回调组合', () => {
   it('预设 headers + onValue 回调', () => {
     const result = parseCSV('Alice,30', {
       headers: ['name', 'age'],
-      onValue: (_name, value) => value.toUpperCase(),
+      onValue: (value) => value.toUpperCase(),
     })
     assert.deepStrictEqual(result, {
       headers: ['name', 'age'],
@@ -444,7 +446,10 @@ describe('parseCSV - 回调组合', () => {
     let called = false
     const result = parseCSV('Alice,30', {
       headers: ['name', 'age'],
-      onHeader: () => { called = true; return 'X' },
+      onHeader: () => {
+        called = true
+        return 'X'
+      },
     })
     assert.strictEqual(called, false)
     assert.deepStrictEqual(result.headers, ['name', 'age'])
@@ -476,7 +481,7 @@ describe('parseCSV - 预设 headers 边界', () => {
     const result = parseCSV('1,2,3', { headers: ['a'] })
     assert.deepStrictEqual(result, {
       headers: ['a'],
-      rows: [{ a: '1', '1': '2', '2': '3' }],
+      rows: [{ a: '1', 1: '2', 2: '3' }],
     })
   })
 
@@ -500,7 +505,7 @@ describe('parseCSV - 特殊内容', () => {
     const result = parseCSV('姓名,年龄\n张三,30')
     assert.deepStrictEqual(result, {
       headers: ['姓名', '年龄'],
-      rows: [{ '姓名': '张三', '年龄': '30' }],
+      rows: [{ 姓名: '张三', 年龄: '30' }],
     })
   })
 
@@ -519,7 +524,7 @@ describe('parseCSV - 特殊内容', () => {
     // headers 数组存的是 ''，但取值时 '' || '0' => '0'（空字符串 falsy）
     assert.deepStrictEqual(result, {
       headers: ['', ''],
-      rows: [{ '0': '1', '1': '2' }],
+      rows: [{ 0: '1', 1: '2' }],
     })
   })
 
@@ -534,10 +539,10 @@ describe('parseCSV - 特殊内容', () => {
     })
   })
 
-  it('分隔符为引号时，引号仍按引号处理（优先级）', () => {
+  it('分隔符为引号时，" 按分隔符处理', () => {
     const result = parseCSV('a"b', { separator: '"' })
     assert.deepStrictEqual(result, {
-      headers: ['ab'],
+      headers: ['a', 'b'],
       rows: [],
     })
   })

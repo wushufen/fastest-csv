@@ -3,23 +3,18 @@
  * @param {object} options
  * @param {string} [options.separator=',']
  * @param {string[]} [options.headers]
- * @param {(name:string, value:string, col:number) => string} [options.onHeader]
- * @param {(name:string, value:string, col:number) => *} [options.onValue]
+ * @param {(value:string, name:string, col:number) => string} [options.onHeader]
+ * @param {(value:string, name:string, col:number) => *} [options.onValue]
  */
 function parseCSV(
   text = '',
-  {
-    separator = ',',
-    headers = [],
-    onHeader = undefined,
-    onValue = undefined,
-  } = {},
+  { separator = ',', headers = [], onHeader = String, onValue = String } = {},
 ) {
   let col = 0 // column index
   let chars = '' // value
 
   let quotStart = false // "...
-  let headerEnd = !!headers.length // first row
+  let headerEnd = headers.length > 0 // first row
 
   let row = /** @type {typeof rows[0]} */ ({})
   const rows = /** @type {Record<string, string>[]} */ ([])
@@ -29,8 +24,34 @@ function parseCSV(
     let colEnd = false
     let rowEnd = false
 
+    // ...>
+    if (!quotStart) {
+      // ...>,...
+      if (char == separator) {
+        colEnd = true
+      }
+      // ...>\n
+      else if (char == '\n' || char == '\r') {
+        colEnd = true
+        rowEnd = true
+
+        // ...\n>\n skip
+        const pre = text[i - 1]
+        if (pre == '\n' || pre == '\r') {
+          continue
+        }
+      }
+      // >"..."
+      else if (char == '"') {
+        quotStart = true
+      }
+      // ...>...
+      else {
+        chars += char
+      }
+    }
     // "...>
-    if (quotStart) {
+    else {
       // "...>"
       if (char == '"') {
         const next = text[i + 1]
@@ -50,51 +71,23 @@ function parseCSV(
         chars += char
       }
     }
-    // ...>
-    else {
-      // >"..."
-      if (char == '"') {
-        quotStart = true
-      }
-      // ...>,...
-      else if (char == separator) {
-        colEnd = true
-      }
-      // ...>\n
-      else if (char == '\r' || char == '\n') {
-        colEnd = true
-        rowEnd = true
 
-        // ...\n>\n skip
-        const pre = text[i - 1]
-        if (pre == '\r' || pre == '\n') {
-          continue
-        }
-      }
-      // ...>...
-      else {
-        chars += char
-      }
-    }
-
-    // ⇥[^\r\n]EOF
-    if (i == text.length - 1) {
+    // ⇥EOF
+    if (i == len - 1) {
       colEnd = true
       rowEnd = true
     }
 
     // ,  \n
     if (colEnd) {
-      // [headers]
-      if (!headerEnd) {
-        const header = onHeader ? onHeader(chars, chars, col) : chars
-        headers.push(header)
-      }
       // {values}
-      else {
+      if (headerEnd) {
         const name = headers[col] || `${col}`
-        const value = onValue ? onValue(name, chars, col) : chars
-        row[name] = value
+        row[name] = onValue(chars, name, col)
+      }
+      // [headers]
+      else {
+        headers.push(onHeader(chars, chars, col))
       }
 
       // \n
