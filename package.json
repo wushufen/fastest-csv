@@ -1,6 +1,6 @@
 {
   "name": "fastest-csv",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fastest CSV parser — zero dependencies, 100+ lines, <1KB gzip",
   "type": "module",
   "main": "src/fastest-csv.js",
@@ -42,5 +42,9 @@
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
   }
 }
