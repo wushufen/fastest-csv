@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseCSV } from './fastest-csv.js'
+import { parseCSV } from '../src/fastest-csv.js'
 
 describe('parseCSV - 基本解析', () => {
   it('解析标准 CSV', () => {
@@ -402,7 +402,7 @@ describe('parseCSV - 混合换行序列', () => {
     })
   })
 
-  it('文本以 \n 开头（i=0 时 text[-1] 为 undefined）', () => {
+  it('文本以 \\n 开头（i=0 时 text[-1] 为 undefined）', () => {
     const result = parseCSV('\na,b\n1,2')
     // text[-1] 是 undefined，不会 continue，空字符串成为唯一的 header
     // 随后 a,b 行被当作数据行（headerEnd 已为 true）
@@ -410,7 +410,7 @@ describe('parseCSV - 混合换行序列', () => {
     assert.ok(result.rows.length >= 1)
   })
 
-  it('数据行以 \r 结尾', () => {
+  it('数据行以 \\r 结尾', () => {
     const result = parseCSV('a,b\n1,2\r')
     assert.deepStrictEqual(result, {
       headers: ['a', 'b'],
@@ -547,7 +547,7 @@ describe('parseCSV - 特殊内容', () => {
     })
   })
 
-  it('分隔符为换行符时，\n 作列分隔而非行分隔', () => {
+  it('分隔符为换行符时，\\n 作列分隔而非行分隔', () => {
     const result = parseCSV('a\nb\nc\nd', { separator: '\n' })
     // \n 先匹配 separator 分支，不走换行逻辑，所有值都在同一行
     assert.deepStrictEqual(result, {
@@ -557,9 +557,181 @@ describe('parseCSV - 特殊内容', () => {
   })
 })
 
+describe('parseCSV - fastMode', () => {
+  it('基本 fastMode 解析', () => {
+    const result = parseCSV('name,age\nAlice,30\nBob,25', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['name', 'age'],
+      rows: [
+        { name: 'Alice', age: '30' },
+        { name: 'Bob', age: '25' },
+      ],
+    })
+  })
+
+  it('fastMode 忽略引号，引号内容不被合并', () => {
+    // fastMode 不处理引号，所以 "hello,world" 会被逗号分成两列
+    const result = parseCSV('a,b\n1,"hello,world"', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '"hello', 2: 'world"' }],
+    })
+  })
+
+  it('fastMode 忽略引号内的换行', () => {
+    const result = parseCSV('a,b\n1,"line1\nline2"', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '"line1' }, { a: 'line2"' }],
+    })
+  })
+
+  it('fastMode 忽略转义引号', () => {
+    const result = parseCSV('a,b\n1,"say ""hello"""', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '"say ""hello"""' }],
+    })
+  })
+
+  it('fastMode + 自定义分隔符', () => {
+    const result = parseCSV('a;b\n1;2', { separator: ';', fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '2' }],
+    })
+  })
+
+  it('fastMode + 预设 headers', () => {
+    const result = parseCSV('Alice,30,NY', {
+      headers: ['name', 'age', 'city'],
+      fastMode: true,
+    })
+    assert.deepStrictEqual(result, {
+      headers: ['name', 'age', 'city'],
+      rows: [{ name: 'Alice', age: '30', city: 'NY' }],
+    })
+  })
+
+  it('fastMode + onHeader 回调', () => {
+    const result = parseCSV('name,age\nAlice,30', {
+      fastMode: true,
+      onHeader: (name) => name.toUpperCase(),
+    })
+    assert.deepStrictEqual(result, {
+      headers: ['NAME', 'AGE'],
+      rows: [{ NAME: 'Alice', AGE: '30' }],
+    })
+  })
+
+  it('fastMode + onValue 回调', () => {
+    const result = parseCSV('name,age\nAlice,30', {
+      fastMode: true,
+      onValue: (value) => {
+        const num = Number(value)
+        return Number.isNaN(num) ? value : num
+      },
+    })
+    assert.deepStrictEqual(result, {
+      headers: ['name', 'age'],
+      rows: [{ name: 'Alice', age: 30 }],
+    })
+  })
+
+  it('fastMode + 空行（trim 后空行被移除）', () => {
+    // trim() 会移除首尾空白，连续换行被 split 合并为空串
+    const result = parseCSV('a,b\n\n1,2', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '2' }],
+    })
+  })
+
+  it('fastMode + 空字符串', () => {
+    // ''.trim().split(/\r\n+/) => ['']，产生一个空 header
+    const result = parseCSV('', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: [''],
+      rows: [],
+    })
+  })
+
+  it('fastMode + 仅 header', () => {
+    const result = parseCSV('a,b,c', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b', 'c'],
+      rows: [],
+    })
+  })
+
+  it('fastMode + 连续换行被 trim 和 split 合并', () => {
+    // trim() 移除首尾空白，/\r\n+/ 将连续换行合并
+    const result = parseCSV('a,b\n\n\n1,2', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '2' }],
+    })
+  })
+
+  it('fastMode + 多行数据', () => {
+    const csv = 'id,name,score\n1,Alice,90\n2,Bob,85\n3,Carol,95'
+    const result = parseCSV(csv, { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['id', 'name', 'score'],
+      rows: [
+        { id: '1', name: 'Alice', score: '90' },
+        { id: '2', name: 'Bob', score: '85' },
+        { id: '3', name: 'Carol', score: '95' },
+      ],
+    })
+  })
+
+  it('fastMode + 末尾换行被 trim 移除', () => {
+    // trim() 移除末尾换行，不产生空行
+    const result = parseCSV('a,b\n1,2\n\n', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '2' }],
+    })
+  })
+
+  it('fastMode + 字段含空格（尾部空格被 trim 移除）', () => {
+    // trim() 移除整个文本的首尾空白
+    const result = parseCSV('a,b\nhello world,  spaced  ', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: 'hello world', b: '  spaced' }],
+    })
+  })
+
+  it('fastMode + Unicode 内容', () => {
+    const result = parseCSV('姓名,年龄\n张三,30', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['姓名', '年龄'],
+      rows: [{ 姓名: '张三', 年龄: '30' }],
+    })
+  })
+
+  it('fastMode + 多余列用索引', () => {
+    const result = parseCSV('a,b\n1,2,3', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b'],
+      rows: [{ a: '1', b: '2', 2: '3' }],
+    })
+  })
+
+  it('fastMode + 少列正常解析', () => {
+    const result = parseCSV('a,b,c\n1', { fastMode: true })
+    assert.deepStrictEqual(result, {
+      headers: ['a', 'b', 'c'],
+      rows: [{ a: '1' }],
+    })
+  })
+})
+
 describe('parseCSV - 导出', () => {
   it('default 导出与命名导出一致', async () => {
-    const mod = await import('./fastest-csv.js')
+    const mod = await import('../src/fastest-csv.js')
     assert.strictEqual(mod.default, mod.parseCSV)
   })
 })

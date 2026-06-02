@@ -3,13 +3,39 @@
  * @param {object} options
  * @param {string} [options.separator=',']
  * @param {string[]} [options.headers]
+ * @param {boolean} [options.fastMode=false]
  * @param {(value:string, name:string, col:number) => string} [options.onHeader]
  * @param {(value:string, name:string, col:number) => *} [options.onValue]
+ * @returns {{ headers: string[], rows: Record<string, string>[] }}
  */
 function parseCSV(
   text = '',
-  { separator = ',', headers = [], onHeader = String, onValue = String } = {},
+  {
+    separator = ',',
+    headers = [],
+    fastMode = false,
+    onHeader = String,
+    onValue = String,
+  } = {},
 ) {
+  if (fastMode) {
+    const lines = text.trim().split(/[\r\n]+/)
+    if (!headers.length) {
+      const line0 = lines.shift() || ''
+      headers = line0.split(separator).map((h, i) => onHeader(h, h, i))
+    }
+
+    const rows = lines.map((line) => {
+      return line.split(separator).reduce((o, v, i) => {
+        const name = headers[i] || `${i}`
+        const value = onValue(v, name, i)
+        o[name] = value
+        return o
+      }, /**@type {*}*/ ({}))
+    })
+    return { headers, rows }
+  }
+
   let col = 0 // column index
   let chars = '' // value
 

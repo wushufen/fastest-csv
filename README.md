@@ -8,10 +8,14 @@
 ```
 12.4MB CSV, 100000 rows, 10 cols (50% "quotes")
 
-fastest-csv  ██████████                   315ms  🏆  39 MB/s
-PapaParse    ██████████████               433ms  1.4x slower
-csv-parse    ███████████████████████████  840ms  2.7x slower
+fastest-csv fastMode  █████                         162ms  🥇🏆
+fastest-csv           ████████████                  352ms  🥉
+PapaParse fastMode    ███████████                   328ms  2.0x slower
+PapaParse             ██████████████                411ms  2.5x slower
+csv-parse             ████████████████████████████  836ms  5.2x slower
 ```
+
+> fastMode (不解析引号 - no quote parsing)
 
 ## Quick Start
 
@@ -43,6 +47,7 @@ parseCSV(text, options?)
 | ------------- | --------------------- | ----------------- | --------------------------------------------------------- |
 | `text`        | `string`              | `''`              | CSV 文本<br>CSV text                                      |
 | `separator`   | `string`              | `','`             | 列分隔符，任意单字符<br>Column delimiter, any single char |
+| `fastMode`    | `boolean`             | `false`           | 不解析引号，性能最佳<br>Skip quote parsing, fastest mode  |
 | `headers`     | `string[]`            | `[]`              | 预设表头<br>Preset headers                                |
 | `onHeader`    | `(v, k, i) => string` | `String`          | 表头转换钩子<br>Header transform hook                     |
 | `onValue`     | `(v, k, i) => any`    | `String`          | 值转换钩子<br>Value transform hook                        |
@@ -67,6 +72,9 @@ parseCSV('Alice,18', { headers: ['name', 'age'] })
 
 // 任意分隔符 - Any delimiter
 parseCSV('a;b;c\n1;2;3', { separator: ';' })
+
+// fastMode：不解析引号，性能最佳 - Fastest mode (no quote parsing)
+parseCSV('a,b\n1,2', { fastMode: true })
 ```
 
 ## Features
@@ -78,6 +86,7 @@ parseCSV('a;b;c\n1;2;3', { separator: ';' })
 - ✅ 引号内换行 - Newlines in quotes
 - ✅ 换行符全兼容 `\n` `\r\n` `\r` - All line endings
 - ✅ 转换钩子 `onHeader` `onValue` - Transform hooks
+- ✅ 极速模式（不解析引号）- Fastest mode (no quote parsing)
 - ✅ 零依赖 - Zero dependencies
 - ✅ 浏览器 / Node.js / Deno / Bun - Any JS runtime
 - ✅ ES Module
@@ -86,11 +95,12 @@ parseCSV('a;b;c\n1;2;3', { separator: ';' })
 ## Test
 
 ```bash
-node --test src/fastest-csv.test.js
+# npm run test
+node --test tests/fastest-csv.test.js
 ```
 
-60 个用例，全部代码分支覆盖，全绿。<br>
-60 test cases, all branches covered, all green.
+全部代码分支覆盖，全绿。<br>
+All branches covered, all green.
 
 ## License
 

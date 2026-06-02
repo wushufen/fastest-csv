@@ -1,6 +1,6 @@
 {
   "name": "fastest-csv",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Fastest CSV parser — zero dependencies, 100+ lines, <1KB gzip",
   "type": "module",
   "main": "src/fastest-csv.js",
@@ -12,7 +12,8 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test src/fastest-csv.test.js"
+    "test": "node --test tests/fastest-csv.test.js",
+    "bench": "node tests/benchmark.js"
   },
   "keywords": [
     "csv",
@@ -45,6 +46,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
+    "csv-parse": "^6.2.1",
+    "papaparse": "^5.5.3",
     "typescript": "^6.0.3"
   }
 }
